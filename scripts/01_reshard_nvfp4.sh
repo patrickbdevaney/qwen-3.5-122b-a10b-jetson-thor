@@ -1,0 +1,101 @@
+#!/bin/bash
+# reproduce/01_reshard_nvfp4.sh
+#
+# Downloads Qwen3.5-122B-A10B base weights from HuggingFace and converts
+# them to NVFP4 compressed-tensors format, resharded for single-GPU inference
+# on Jetson AGX Thor.
+#
+# Prerequisites:
+#   - huggingface-cli installed and authenticated (huggingface-cli login)
+#   - ~300GB free disk space during conversion (source + output + temp)
+#   - vllm-thor:qwen35-latest Docker image built (for the conversion tools)
+#
+# Output:
+#   ~/Qwen3.5-122B-A10B-NVFP4/resharded/
+#
+# This script is the most compute-intensive step. Allow several hours.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="$HOME/Qwen3.5-122B-A10B-NVFP4"
+SOURCE_DIR="$BASE_DIR/source"
+OUTPUT_DIR="$BASE_DIR/resharded"
+HF_MODEL="Qwen/Qwen3.5-122B-A10B"
+
+echo "=== Step 1: Download base weights from HuggingFace ==="
+echo "Source model: $HF_MODEL"
+echo "Destination: $SOURCE_DIR"
+echo ""
+
+mkdir -p "$SOURCE_DIR"
+
+# Check HuggingFace auth
+if ! huggingface-cli whoami &>/dev/null; then
+    echo "ERROR: Not authenticated with HuggingFace."
+    echo "Run: huggingface-cli login"
+    exit 1
+fi
+
+# Download base BF16 weights
+# --include filters to only model weights (skip LFS pointers for non-weight files)
+huggingface-cli download "$HF_MODEL" \
+    --local-dir "$SOURCE_DIR" \
+    --local-dir-use-symlinks False
+
+echo ""
+echo "=== Step 2: Convert to NVFP4 compressed-tensors ==="
+echo "Output: $OUTPUT_DIR"
+echo ""
+
+mkdir -p "$OUTPUT_DIR"
+
+# The conversion uses the TensorRT Model Optimizer (torch-trt / modelopt) tooling
+# baked into the vLLM Jetson container.
+#
+# The convert_to_nvfp4_moe_kernel_format script handles:
+#   - Weight quantization to FP4 (W4A4 format)
+#   - Expert weight resharding for single-GPU MoE dispatch
+#   - compressed-tensors metadata generation for vLLM
+#
+# NOTE: If this script path differs in your container version, inspect:
+#   docker run --rm vllm-thor:qwen35-latest find / -name "*nvfp4*" 2>/dev/null
+#   docker run --rm vllm-thor:qwen35-latest find / -name "*reshard*" 2>/dev/null
+
+docker run --rm \
+    --runtime nvidia --gpus all \
+    --ipc=host \
+    -e LD_PRELOAD=/usr/lib/aarch64-linux-gnu/nvidia/libcuda.so.1 \
+    -e VLLM_USE_FLASHINFER_MOE_FP4=0 \
+    -v "$SOURCE_DIR:/source:ro" \
+    -v "$OUTPUT_DIR:/output" \
+    vllm-thor:qwen35-latest \
+    python3 /tmp/vllm/tools/convert_to_nvfp4_moe_kernel_format.py \
+        --model-path /source \
+        --output-path /output \
+        --dtype fp4
+
+echo ""
+echo "=== Step 3: Verify output ==="
+echo ""
+
+# Check that key files were created
+if [ ! -f "$OUTPUT_DIR/config.json" ]; then
+    echo "ERROR: config.json not found in output. Conversion may have failed."
+    exit 1
+fi
+
+if ! ls "$OUTPUT_DIR"/*.safetensors &>/dev/null; then
+    echo "ERROR: No .safetensors files found in output."
+    exit 1
+fi
+
+echo "Resharded weights written to: $OUTPUT_DIR"
+echo "Files:"
+ls -lh "$OUTPUT_DIR"/*.safetensors | head -20
+echo ""
+echo "Total size:"
+du -sh "$OUTPUT_DIR"
+echo ""
+echo "=== Resharding complete ==="
+echo "Next step: bash reproduce/02_build_docker.sh"
