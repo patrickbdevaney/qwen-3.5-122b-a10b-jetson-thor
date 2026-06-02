@@ -30,10 +30,21 @@ echo ""
 
 mkdir -p "$SOURCE_DIR"
 
+
+# find the Hugging Face CLI cmd
+if command -v hf &> /dev/null; then
+    HF_AUTH_CMD="hf auth"
+elif command -v huggingface-cli &> /dev/null; then
+    HF_AUTH_CMD="huggingface-cli"
+else
+    echo "ERROR: HuggingFace CLI is not installed."
+    echo "Please install it first."
+    exit 1
+fi
 # Check HuggingFace auth
-if ! huggingface-cli whoami &>/dev/null; then
+if ! $HF_AUTH_CMD whoami &>/dev/null; then
     echo "ERROR: Not authenticated with HuggingFace."
-    echo "Run: huggingface-cli login"
+    echo "Run: $HF_AUTH_CMD login"
     exit 1
 fi
 
