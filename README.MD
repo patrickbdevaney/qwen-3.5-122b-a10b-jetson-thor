@@ -216,6 +216,17 @@ Run `reproduce/01_reshard_nvfp4.sh` to convert from base BF16 weights.
 The resharded output should be placed at `~/Qwen3.5-122B-A10B-NVFP4/resharded/`
 on the Thor host before running the serve script.
 
+> **Note — offline MoE repack is optional.** The reshard script will look for
+> `convert_to_nvfp4_moe_kernel_format.py` inside the vLLM container and run it
+> if present. That tool only performs an *offline* repack of the NVFP4 MoE
+> weights into kernel format and has moved/been removed across vLLM commits, so
+> it is not present in every build. If it is missing, the script prints a notice
+> and continues — it does **not** fail. The repack is purely a cold-start
+> optimization: vLLM repacks NVFP4 MoE weights into kernel format automatically
+> at model load time (you will see `Using MoEPrepareAndFinalizeNoDPEPModular` in
+> the serve logs), and the resharded compressed-tensors weights serve correctly
+> either way.
+
 ---
 
 ## Quick Start (from scratch)

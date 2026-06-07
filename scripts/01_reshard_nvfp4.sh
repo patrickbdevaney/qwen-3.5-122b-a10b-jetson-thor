@@ -73,6 +73,11 @@ mkdir -p "$OUTPUT_DIR"
 #   docker run --rm vllm-thor:qwen35-latest find / -name "*nvfp4*" 2>/dev/null
 #   docker run --rm vllm-thor:qwen35-latest find / -name "*reshard*" 2>/dev/null
 
+# Locate the optional NVFP4 MoE kernel-format repack tool *inside the container*
+# (the tool ships within the vLLM source tree under /tmp/vllm, and it has moved
+# across vLLM versions). This step is an offline optimization only — vLLM repacks
+# NVFP4 MoE weights into kernel format automatically at load time if it is skipped.
+# Detection runs inside the container because /tmp/vllm does not exist on the host.
 docker run --rm \
     --runtime nvidia --gpus all \
     --ipc=host \
@@ -81,10 +86,31 @@ docker run --rm \
     -v "$SOURCE_DIR:/source:ro" \
     -v "$OUTPUT_DIR:/output" \
     vllm-thor:qwen35-latest \
-    python3 /tmp/vllm/tools/convert_to_nvfp4_moe_kernel_format.py \
-        --model-path /source \
-        --output-path /output \
-        --dtype fp4
+    bash -c '
+        set -e
+        REPACK_TOOL=""
+        for p in \
+            /tmp/vllm/tools/convert_to_nvfp4_moe_kernel_format.py \
+            /tmp/vllm/vllm/model_executor/layers/fused_moe/tools/convert_to_nvfp4_moe_kernel_format.py; do
+            if [ -f "$p" ]; then REPACK_TOOL="$p"; break; fi
+        done
+        if [ -z "$REPACK_TOOL" ]; then
+            REPACK_TOOL="$(find /tmp/vllm -name convert_to_nvfp4_moe_kernel_format.py 2>/dev/null | head -1)"
+        fi
+
+        if [ -n "$REPACK_TOOL" ] && [ -f "$REPACK_TOOL" ]; then
+            echo "Found NVFP4 MoE repack tool at $REPACK_TOOL — running offline repack."
+            python3 "$REPACK_TOOL" \
+                --model-path /source \
+                --output-path /output \
+                --dtype fp4
+        else
+            echo "NOTE: convert_to_nvfp4_moe_kernel_format.py not present in this vLLM build."
+            echo "This is expected on newer vLLM commits. The offline MoE repack is being skipped."
+            echo "vLLM will repack NVFP4 MoE weights into kernel format automatically at model load"
+            echo "(you will see '\''Using MoEPrepareAndFinalizeNoDPEPModular'\'' in the serve logs)."
+        fi
+    '
 
 echo ""
 echo "=== Step 3: Verify output ==="
