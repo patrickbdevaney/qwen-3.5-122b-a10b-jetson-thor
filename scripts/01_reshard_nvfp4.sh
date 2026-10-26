@@ -1,5 +1,5 @@
 #!/bin/bash
-# reproduce/01_reshard_nvfp4.sh
+# scripts/01_reshard_nvfp4.sh
 #
 # Downloads Qwen3.5-122B-A10B base weights from HuggingFace and converts
 # them to NVFP4 compressed-tensors format, resharded for single-GPU inference
@@ -131,7 +131,7 @@ if [ ! -f "$OUTPUT_DIR/config.json" ] || ! ls "$OUTPUT_DIR"/*.safetensors &>/dev
     echo "Point the serve script at your existing resharded compressed-tensors weights."
     echo ""
     echo "=== Resharding step complete (offline repack skipped) ==="
-    echo "Next step: bash reproduce/02_build_docker.sh"
+    echo "Next step: bash scripts/02_build_docker.sh"
     exit 0
 fi
 
@@ -143,4 +143,4 @@ echo "Total size:"
 du -sh "$OUTPUT_DIR"
 echo ""
 echo "=== Resharding complete ==="
-echo "Next step: bash reproduce/02_build_docker.sh"
+echo "Next step: bash scripts/02_build_docker.sh"

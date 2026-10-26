@@ -1,5 +1,5 @@
 #!/bin/bash
-# reproduce/04_verify.sh
+# scripts/04_verify.sh
 #
 # Verifies:
 #   1. Patches are correctly applied in the Docker image

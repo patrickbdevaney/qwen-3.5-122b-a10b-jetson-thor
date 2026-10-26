@@ -1,5 +1,5 @@
 """
-client/main.py
+chat/main.py
 
 FastAPI chat proxy — run on your laptop to talk to the vLLM server on Thor.
 
@@ -9,14 +9,14 @@ Usage:
 
 Then open: http://localhost:7860
 
-Connects to Thor at: http://100.72.56.36:8000 || locahlhost:8000 on thor || http://<your_ip>:8000 if running vLLM locally
-(Update THOR_BASE_URL below if Thor's IP changes)
+Connects to the vLLM server at $VLLM_BASE_URL (default http://localhost:8000).
 """
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from openai import AsyncOpenAI
+import os
 import asyncio
 import json
 import httpx
@@ -24,7 +24,8 @@ from datetime import datetime
 from typing import AsyncGenerator
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-THOR_BASE_URL = "http://100.72.56.36:8000/v1"
+VLLM_BASE_URL = os.environ.get("VLLM_BASE_URL", "http://localhost:8000").rstrip("/")
+THOR_BASE_URL = f"{VLLM_BASE_URL}/v1"
 MODEL_NAME = "/model"  # vLLM serves the model under its mount path
 
 app = FastAPI(title="Thor Chat — Qwen3.5-122B")
@@ -49,7 +50,7 @@ async def status():
     """Check if Thor's vLLM server is reachable."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as http:
-            r = await http.get(f"http://100.72.56.36:8000/health")
+            r = await http.get(f"{VLLM_BASE_URL}/health")
             return {"status": "online", "code": r.status_code}
     except Exception as e:
         return {"status": "offline", "error": str(e)}
@@ -60,7 +61,7 @@ async def metrics():
     """Pull live metrics from Thor's Prometheus endpoint."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as http:
-            r = await http.get(f"http://100.72.56.36:8000/metrics")
+            r = await http.get(f"{VLLM_BASE_URL}/metrics")
             text = r.text
 
         def extract(name: str) -> str:

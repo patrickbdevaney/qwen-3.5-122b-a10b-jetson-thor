@@ -1,5 +1,5 @@
 #!/bin/bash
-# reproduce/02_build_docker.sh
+# scripts/02_build_docker.sh
 #
 # Builds the patched vLLM Docker image for Qwen3.5-122B-A10B-NVFP4 on Jetson Thor.
 #
@@ -145,4 +145,4 @@ echo "To also tag for Docker Hub:"
 echo "  docker tag $IMAGE_TAG $DOCKERHUB_TAG"
 echo "  docker push $DOCKERHUB_TAG"
 echo ""
-echo "Next step: bash reproduce/03_serve.sh"
+echo "Next step: bash scripts/03_serve.sh"

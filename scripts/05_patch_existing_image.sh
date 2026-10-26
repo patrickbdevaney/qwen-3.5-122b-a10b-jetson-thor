@@ -1,5 +1,5 @@
 #!/bin/bash
-# reproduce/05_patch_existing_image.sh
+# scripts/05_patch_existing_image.sh
 #
 # Applies all required patches to an existing NVIDIA Jetson vLLM base image
 # and commits the result as vllm-thor:qwen35-latest.
@@ -10,10 +10,10 @@
 #   - You want to patch a different base image tag
 #
 # Usage:
-#   bash reproduce/05_patch_existing_image.sh [BASE_IMAGE_TAG]
+#   bash scripts/05_patch_existing_image.sh [BASE_IMAGE_TAG]
 #
 # Example:
-#   bash reproduce/05_patch_existing_image.sh nvcr.io/nvidia/jetson/vllm:latest-jetson
+#   bash scripts/05_patch_existing_image.sh nvcr.io/nvidia/jetson/vllm:latest-jetson
 #
 # If BASE_IMAGE_TAG is not provided, patches are applied to the current
 # vllm-thor:qwen35-latest (idempotent — safe to run on already-patched image).
@@ -170,4 +170,4 @@ docker run --rm "$OUTPUT_TAG" \
 echo ""
 echo "=== Done ==="
 echo "Image ready: $OUTPUT_TAG"
-echo "Next: bash reproduce/03_serve.sh"
+echo "Next: bash scripts/03_serve.sh"

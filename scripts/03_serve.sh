@@ -1,5 +1,5 @@
 #!/bin/bash
-# reproduce/03_serve.sh
+# scripts/03_serve.sh
 #
 # Launches the vLLM inference server for Qwen3.5-122B-A10B-NVFP4
 # on Jetson AGX Thor.
@@ -33,13 +33,13 @@ echo "=== Preflight checks ==="
 
 if [ ! -d "$MODEL_PATH" ]; then
     echo "ERROR: Model weights not found at $MODEL_PATH"
-    echo "Run: bash reproduce/01_reshard_nvfp4.sh"
+    echo "Run: bash scripts/01_reshard_nvfp4.sh"
     exit 1
 fi
 
 if ! docker image inspect "$IMAGE" &>/dev/null; then
     echo "ERROR: Docker image $IMAGE not found."
-    echo "Run: bash reproduce/02_build_docker.sh"
+    echo "Run: bash scripts/02_build_docker.sh"
     exit 1
 fi
 
